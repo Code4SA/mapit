@@ -37,7 +37,7 @@ GOOGLE_ANALYTICS = config.get('GOOGLE_ANALYTICS', '')
 
 # Django settings for mapit project.
 
-DEBUG = config.get('DEBUG', True)
+DEBUG = os.environ.get('DJANGO_DEBUG', 'true') == 'true'
 TEMPLATE_DEBUG = DEBUG
 
 # (Note that even if DEBUG is true, output_json still sets a
@@ -70,19 +70,16 @@ if config.get('BUGS_EMAIL'):
         ('mySociety bugs', config['BUGS_EMAIL']),
     )
 
+import dj_database_url
 DATABASES = {
-    'default': {
-        'ENGINE': 'django.contrib.gis.db.backends.postgis',
-        'NAME': config.get('MAPIT_DB_NAME', 'mapit'),
-        'USER': config.get('MAPIT_DB_USER', 'mapit'),
-        'PASSWORD': config.get('MAPIT_DB_PASS', ''),
-        'HOST': config.get('MAPIT_DB_HOST', ''),
-        'PORT': config.get('MAPIT_DB_PORT', ''),
-    }
+    'default': dj_database_url.config(default='postgis://mapit:mapit@localhost:5432/mapit')
 }
 
 # Make this unique, and don't share it with anybody.
-SECRET_KEY = config.get('DJANGO_SECRET_KEY', '')
+if DEBUG:
+    SECRET_KEY = '-r&cjf5&l80y&(q_fiidd$-u7&o$=gv)s84=2^a2$o^&9aco0o'
+else:
+    SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY')
 
 ALLOWED_HOSTS = ['*']
 
