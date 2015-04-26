@@ -19,8 +19,16 @@
                     <li>/area/<i>[area ID]</i>.<i>[kml or geojson or wkt]</i>
                     <li>/area/<i>[SRID]</i>/<i>[area ID]</i>.<i>[kml or json or wkt]</i>
                 </ul></dd>
+
+                <dt>Area ID:</dt>
+                <dd><i>area ID</i> is either an integer MapIt area id, or <i>code-type:code</i>.
+                The <i>code-type</i> identifies the type of <i>code</i>. For example, the Municipal Demarcation
+                Board (<code>MDB</code>) code for Gauteng is <code>GT</code> and the corresponding <i>area ID</i>
+                is <code>MDB:GT</code>.</dd>
+
                 <dt>Optional query parameters:</dt>
                 <dd><i>simplify_tolerance</i>, a floating point parameter to simplify the polygons returned.</dd>
+
                 <dt>Returns:</dt>
                 <dd>Information on a particular area, including name, type, parent, and any associated codes
                 (see <a href="#general">below for details</a>). The code lookups redirect to the area URI.
@@ -49,6 +57,13 @@
                     <li>/area/<i>[area ID]</i>/intersects
 {% endif %}
                 </ul></dd>
+
+                <dt>Area ID:</dt>
+                <dd><i>area ID</i> is either an integer MapIt area id, or <i>code-type:code</i>.
+                The <i>code-type</i> identifies the type of <i>code</i>. For example, the Municipal Demarcation
+                Board (<code>MDB</code>) code for Gauteng is <code>GT</code> and the corresponding <i>area ID</i>
+                is <code>MDB:GT</code>.</dd>
+
                 <dt>Optional query parameters:</dt>
                 <dd><ul>
                     <li><i>type</i>, to restrict results to a particular type or types.</li>
