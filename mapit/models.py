@@ -15,6 +15,9 @@ from mapit.djangopatch import GetQuerySetMetaclass
 from django.utils import six
 
 
+ID_RE = re.compile('\d+')
+
+
 class GenerationManager(six.with_metaclass(GetQuerySetMetaclass, models.Manager)):
     def current(self):
         """Return the most recent active generation.
@@ -132,6 +135,27 @@ class Type(models.Model):
 class AreaManager(six.with_metaclass(GetQuerySetMetaclass, models.GeoManager)):
     def get_queryset(self):
         return super(AreaManager, self).get_queryset().select_related('type', 'country')
+
+    def by_code_or_id(self, area_id, generation=None):
+        if generation is None:
+            generation = Generation.objects.current()
+        params = {
+            'generation_low__lte': generation,
+            'generation_high__lte': generation,
+        }
+
+        if isinstance(area_id, int) or ID_RE.match(area_id):
+            # lookup by id
+            params['id'] = int(area_id)
+        elif ':' in area_id:
+            # lookup by code: code_type:code
+            # eg. MDB:WC
+            code_type, code = area_id.split(':', 1)
+            params['codes__type__code'] = code_type
+            params['codes__code'] = code
+        else:
+            return None
+        return Area.objects.filter(**params).first()
 
     def by_location(self, location, generation=None):
         if generation is None:

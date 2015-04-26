@@ -22,6 +22,16 @@
                     <li>/area/<i>[{% trans "area ID" %}]</i>.<i>[{% trans "kml or geojson or wkt" %}]</i>
                     <li>/area/<i>[{% trans "SRID" %}]</i>/<i>[{% trans "area ID" %}]</i>.<i>[{% trans "kml or json or wkt" %}]</i>
                 </ul></dd>
+
+                <dt>{% trans "Area ID" %}:</dt>
+                <dd>
+                {% blocktrans trimmed %}
+                <i>area ID</i> is either an integer MapIt area id, or <i>code-type:code</i>.
+                The <i>code-type</i> identifies the type of <i>code</i>. For example, the Municipal Demarcation
+                Board (<code>MDB</code>) code for Gauteng is <code>GT</code> and the corresponding <i>area ID</i>
+                is <code>MDB:GT</code>.</dd>
+                {% endblocktrans %}
+
                 <dt>{% trans "Optional query parameters" %}:</dt>
                 <dd><i>simplify_tolerance</i>, {% trans "a floating point parameter to simplify the polygons returned" %}.</dd>
                 <dt>{% trans "Returns" %}:</dt>
@@ -57,6 +67,16 @@
                     <li>/area/<i>[{% trans "area ID" %}]</i>/intersects
 {% endif %}
                 </ul></dd>
+
+                <dt>{% trans "Area ID" %}:</dt>
+                <dd>
+                {% blocktrans trimmed %}
+                <i>area ID</i> is either an integer MapIt area id, or <i>code-type:code</i>.
+                The <i>code-type</i> identifies the type of <i>code</i>. For example, the Municipal Demarcation
+                Board (<code>MDB</code>) code for Gauteng is <code>GT</code> and the corresponding <i>area ID</i>
+                is <code>MDB:GT</code>.</dd>
+                {% endblocktrans %}
+
                 <dt>{% trans "Optional query parameters" %}:</dt>
                 <dd><ul>
                     {% blocktrans trimmed %}
