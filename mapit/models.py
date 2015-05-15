@@ -311,6 +311,37 @@ class Area(models.Model):
         else:
             return ""
 
+    def geometry(self):
+        """ Get a dict describing the geometry of this area, or None if
+        this area has no polygons.
+        """
+        all_areas = self.polygons.all().collect()
+        if not all_areas:
+            return None
+
+        out = {
+            'parts': all_areas.num_geom,
+        }
+        if settings.MAPIT_AREA_SRID != 4326:
+            out['srid_en'] = settings.MAPIT_AREA_SRID
+            out['area'] = all_areas.area
+            out['min_e'], out['min_n'], out['max_e'], out['max_n'] = all_areas.extent
+            out['centre_e'], out['centre_n'] = all_areas.centroid
+            all_areas.transform(4326)
+            out['min_lon'], out['min_lat'], out['max_lon'], out['max_lat'] = all_areas.extent
+            out['centre_lon'], out['centre_lat'] = all_areas.centroid
+        else:
+            out['min_lon'], out['min_lat'], out['max_lon'], out['max_lat'] = all_areas.extent
+            out['centre_lon'], out['centre_lat'] = all_areas.centroid
+            if hasattr(countries, 'area_geometry_srid'):
+                srid = countries.area_geometry_srid
+                all_areas.transform(srid)
+                out['srid_en'] = srid
+                out['area'] = all_areas.area
+                out['min_e'], out['min_n'], out['max_e'], out['max_n'] = all_areas.extent
+                out['centre_e'], out['centre_n'] = all_areas.centroid
+        return out
+
     def export(self,
                srid,
                export_format,

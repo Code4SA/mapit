@@ -255,39 +255,11 @@ def areas_by_name(request, name, format='json'):
 
 @ratelimit(minutes=3, requests=100)
 def area_geometry(request, area_id):
-    area = _area_geometry(area_id)
-    if isinstance(area, HttpResponse):
-        return area
-    return output_json(area)
-
-
-def _area_geometry(area_id):
     area = lookup_area_or_404(area_id)
-    all_areas = area.polygons.all().collect()
-    if not all_areas:
+    geom = area.geometry()
+    if not geom:
         return output_json({'error': 'No polygons found'}, code=404)
-    out = {
-        'parts': all_areas.num_geom,
-    }
-    if settings.MAPIT_AREA_SRID != 4326:
-        out['srid_en'] = settings.MAPIT_AREA_SRID
-        out['area'] = all_areas.area
-        out['min_e'], out['min_n'], out['max_e'], out['max_n'] = all_areas.extent
-        out['centre_e'], out['centre_n'] = all_areas.centroid
-        all_areas.transform(4326)
-        out['min_lon'], out['min_lat'], out['max_lon'], out['max_lat'] = all_areas.extent
-        out['centre_lon'], out['centre_lat'] = all_areas.centroid
-    else:
-        out['min_lon'], out['min_lat'], out['max_lon'], out['max_lat'] = all_areas.extent
-        out['centre_lon'], out['centre_lat'] = all_areas.centroid
-        if hasattr(countries, 'area_geometry_srid'):
-            srid = countries.area_geometry_srid
-            all_areas.transform(srid)
-            out['srid_en'] = srid
-            out['area'] = all_areas.area
-            out['min_e'], out['min_n'], out['max_e'], out['max_n'] = all_areas.extent
-            out['centre_e'], out['centre_n'] = all_areas.centroid
-    return out
+    return output_json(geom)
 
 
 @ratelimit(minutes=3, requests=100)
@@ -295,10 +267,8 @@ def areas_geometry(request, area_ids):
     area_ids = area_ids.split(',')
     out = {}
     for id in area_ids:
-        area = _area_geometry(id)
-        if isinstance(area, HttpResponse):
-            area = {}
-        out[id] = area
+        area = lookup_area_or_404(id)
+        out[id] = area.geometry() or {}
     return output_json(out)
 
 
