@@ -90,9 +90,9 @@ class AreaViewsTest(TestCase):
 
     def test_json_links(self):
         id = self.big_area.id
-        url = '/area/%d/covers.html?type=SML' % id
+        url = '/area/%d/covers.html?type=BIG' % id
         response = self.client.get(url)
-        self.assertContains(response, '/area/%d/covers?type=SML' % id)
+        self.assertContains(response, '/area/%d/covers?type=BIG' % id)
 
     def test_example_postcode(self):
         id = self.small_area_1.id

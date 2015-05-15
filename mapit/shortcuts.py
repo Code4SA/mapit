@@ -6,6 +6,7 @@ from django import http
 from django.db import connection
 from django.conf import settings
 from django.shortcuts import get_object_or_404 as orig_get_object_or_404
+from django.shortcuts import get_list_or_404 as orig_get_list_or_404
 from django.template import loader
 from django.utils.six.moves import map
 from django.utils.encoding import smart_bytes
@@ -101,6 +102,14 @@ def output_json(out, code=200):
 def get_object_or_404(klass, format='json', *args, **kwargs):
     try:
         return orig_get_object_or_404(klass, *args, **kwargs)
+    except http.Http404 as e:
+        from mapit.middleware import ViewException
+        raise ViewException(format, str(e), 404)
+
+
+def get_list_or_404(klass, format='json', *args, **kwargs):
+    try:
+        return orig_get_list_or_404(klass, *args, **kwargs)
     except http.Http404 as e:
         from mapit.middleware import ViewException
         raise ViewException(format, str(e), 404)
