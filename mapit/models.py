@@ -1,10 +1,10 @@
 import re
 import itertools
+import json
 
 from django.contrib.gis import geos
 from django.contrib.gis.db import models
 from django.contrib.gis.gdal import SRSException, OGRException
-from django.contrib.gis.serializers.geojson import Serializer as BaseGeoJSONSerializer
 from django.conf import settings
 from django.db import connection
 from django.db.models.query import RawQuerySet
@@ -15,20 +15,6 @@ from mapit.managers import Manager, GeoManager
 from mapit import countries
 from mapit.djangopatch import GetQuerySetMetaclass
 from django.utils import six
-
-
-class GeoJSONSerializer(BaseGeoJSONSerializer):
-    """ Overrides the normal GeoJSON serializer to allow us to inject
-    geometry directly for objects that don't have appropriate attributes.
-    """
-    def _init_options(self):
-        super(GeoJSONSerializer, self)._init_options()
-        self.direct_geometry = self.json_kwargs.pop('geometry', None)
-
-    def start_object(self, obj):
-        super(GeoJSONSerializer, self).start_object(obj)
-        if not self._geometry:
-            self._geometry = self.direct_geometry
 
 
 class GenerationManager(six.with_metaclass(GetQuerySetMetaclass, models.Manager)):
@@ -417,13 +403,25 @@ class Area(models.Model):
             out = all_areas.json
             content_type = 'application/json'
         elif export_format == 'geojson':
-            serializer = GeoJSONSerializer()
-            out = serializer.serialize([self], geometry=all_areas, srid=srid)
+            out = json.dumps(self.as_geojson(polygons=all_areas, srid=srid))
             content_type = 'application/json'
         elif export_format == 'wkt':
             out = all_areas.wkt
             content_type = 'text/plain'
         return (out, content_type)
+
+    def as_geojson(self, polygons=None, srid=4326):
+        polygons = polygons or self.polygons.all().collect()
+        out = {
+            'type': 'Feature',
+            'crs': {
+                'type': 'name',
+                'properties': {'name': 'EPSG:%d' % srid},
+            },
+            'properties': self.as_dict(),
+            'geometry': json.loads(polygons.geojson),
+        }
+        return out
 
 
 @python_2_unicode_compatible
