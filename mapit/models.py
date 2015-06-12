@@ -1,6 +1,8 @@
 import re
 import itertools
+import json
 
+from django.contrib.gis import geos
 from django.contrib.gis.db import models
 from django.contrib.gis.gdal import SRSException, OGRException
 from django.conf import settings
@@ -287,6 +289,38 @@ class Area(models.Model):
         else:
             return ""
 
+    def geometry(self):
+        """ Get a dict describing the geometry of this area, or None if
+        this area has no polygons.
+        """
+        all_areas = self.polygons.all().collect()
+        if not all_areas:
+            return None
+
+        out = {
+            'parts': all_areas.num_geom,
+        }
+        if settings.MAPIT_AREA_SRID != 4326:
+            out['srid_en'] = settings.MAPIT_AREA_SRID
+            out['area'] = all_areas.area
+            out['min_e'], out['min_n'], out['max_e'], out['max_n'] = all_areas.extent
+            out['centre_e'], out['centre_n'] = all_areas.centroid
+            all_areas.transform(4326)
+            out['min_lon'], out['min_lat'], out['max_lon'], out['max_lat'] = all_areas.extent
+            out['centre_lon'], out['centre_lat'] = all_areas.centroid
+        else:
+            out['min_lon'], out['min_lat'], out['max_lon'], out['max_lat'] = all_areas.extent
+            out['centre_lon'], out['centre_lat'] = all_areas.centroid
+            if hasattr(countries, 'area_geometry_srid'):
+                srid = countries.area_geometry_srid
+                all_areas.transform(srid)
+                out['srid_en'] = srid
+                out['area'] = all_areas.area
+                out['min_e'], out['min_n'], out['max_e'], out['max_n'] = all_areas.extent
+                out['centre_e'], out['centre_n'] = all_areas.centroid
+        return out
+
+
     def export(self,
                srid,
                export_format,
@@ -365,13 +399,46 @@ class Area(models.Model):
             else:
                 raise Exception("Unknown kml_type: '%s'" % (kml_type,))
             content_type = 'application/vnd.google-earth.kml+xml'
-        elif export_format in ('json', 'geojson'):
+        elif export_format == 'json':
             out = all_areas.json
+            content_type = 'application/json'
+        elif export_format == 'geojson':
+            out = json.dumps(self.as_geojson(polygons=all_areas, srid=srid))
             content_type = 'application/json'
         elif export_format == 'wkt':
             out = all_areas.wkt
             content_type = 'text/plain'
         return (out, content_type)
+
+    def as_geojson(self, polygons=None, srid=4326):
+        polygons = polygons or self.polygons.all().collect()
+        out = {
+            'type': 'Feature',
+            'properties': self.as_dict(),
+            'geometry': json.loads(polygons.geojson),
+        }
+
+        if srid:
+            out['crs'] = {
+                'type': 'name',
+                'properties': {'name': 'EPSG:%d' % srid},
+            }
+
+        return out
+
+    @classmethod
+    def areas_as_geojson(cls, areas, srid=4326):
+        """ Return a geojson FeatureCollection dict for these areas.
+        """
+        out = {
+            'type': 'FeatureCollection',
+            'crs': {
+                'type': 'name',
+                'properties': {'name': 'EPSG:%d' % srid},
+            },
+            'features': [a.as_geojson() for a in areas],
+        }
+        return out
 
 
 @python_2_unicode_compatible
