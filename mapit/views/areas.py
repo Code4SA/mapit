@@ -11,7 +11,7 @@ except ImportError:
 from django.utils.translation import ugettext as _
 from django.contrib.gis.geos import Point
 from django.db.models.query import QuerySet
-from django.http import HttpResponse, HttpResponseRedirect, Http404
+from django.http import HttpResponse, HttpResponseRedirect
 from django.core.urlresolvers import resolve, reverse
 from django.conf import settings
 from django.shortcuts import redirect, render
@@ -28,15 +28,25 @@ ID_RE = re.compile('\d+')
 
 
 def lookup_area_or_404(request, format, area_id):
-    args = query_args(request, format)
-    args.update(query_args_for_area_id(request, area_id))
-    areas = get_list_or_404(Area, format, **args)
+    areas = lookup_areas_or_404(request, format, area_id)
 
     if len(areas) > 1:
         message = 'There were multiple areas that matched %s.' % area_id
         raise ViewException(format, message, 500)
 
     return areas[0]
+
+
+def lookup_areas_or_404(request, format, area_id_string):
+    areas = []
+    args = query_args(request, format)
+
+    for area_id in area_id_string.split(','):
+        area_args = query_args_for_area_id(request, area_id)
+        area_args.update(args)
+        areas.extend(get_list_or_404(Area, format, **area_args))
+
+    return areas
 
 
 def add_codes(areas):
@@ -110,7 +120,8 @@ def query_args_for_area_id(request, area_id):
         args['codes__type__code'] = code_type
         args['codes__code'] = code
     else:
-        raise Http404()
+        # it's probably an area type code
+        args['type__code'] = area_id
     return args
 
 
@@ -260,22 +271,14 @@ def area_intersects(request, area_id, format='json'):
 
 @ratelimit(minutes=3, requests=100)
 def areas(request, area_ids, format='json'):
-    args = query_args(request, format)
-    areas = []
-
-    for area_id in area_ids.split(','):
-        area_args = query_args_for_area_id(request, area_id)
-        area_args.update(args)
-        areas.extend(get_list_or_404(Area, format, **area_args))
-
+    areas = lookup_areas_or_404(request, format, area_ids)
     return output_areas(request, 'Areas ID lookup', format, areas)
 
 
 @ratelimit(minutes=3, requests=100)
-def areas_by_type(request, type, format='json'):
-    args = query_args(request, format, type)
-    areas = Area.objects.filter(**args)
-    return output_areas(request, _('Areas in %s') % type, format, areas)
+def areas_polygons(request, area_ids, format):
+    areas = lookup_areas_or_404(request, format, area_ids)
+    return output_areas(request, 'Area polygons by ID lookup', format, areas)
 
 
 @ratelimit(minutes=3, requests=100)

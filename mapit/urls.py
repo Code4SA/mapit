@@ -47,7 +47,6 @@ urlpatterns = [
 
     url(r'^areas/(?P<area_ids>[0-9A-Za-z:]+(?:,[0-9A-Za-z:]+)*)%s$' % format_end, areas.areas),
     url(r'^areas/(?P<area_ids>[0-9A-Za-z:]+(?:,[0-9A-Za-z:]+)*)/geometry$', areas.areas_geometry),
-    url(r'^areas/(?P<type>[A-Z0-9,]*[A-Z0-9]+)%s$' % format_end, areas.areas_by_type),
     url(r'^areas/(?P<name>.+?)%s$' % format_end, areas.areas_by_name),
     url(r'^areas$', areas.deal_with_POST, {'call': 'areas'}),
     url(r'^code/(?P<code_type>[^/]+)/(?P<code_value>[^/]+?)%s$' % format_end, areas.area_from_code),
