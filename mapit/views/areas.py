@@ -11,17 +11,32 @@ except ImportError:
 from django.utils.translation import ugettext as _
 from django.contrib.gis.geos import Point
 from django.db.models.query import QuerySet
-from django.http import HttpResponse, HttpResponseRedirect
+from django.http import HttpResponse, HttpResponseRedirect, Http404
 from django.core.urlresolvers import resolve, reverse
 from django.conf import settings
 from django.shortcuts import redirect, render
 
 from mapit.models import Area, Generation, Geometry, Code, Name, TransformError
-from mapit.shortcuts import output_json, output_html, get_object_or_404, set_timeout
+from mapit.shortcuts import output_json, output_html, get_list_or_404, set_timeout
 from mapit.middleware import ViewException
 from mapit.ratelimitcache import ratelimit
 from mapit import countries
 from mapit.iterables import iterdict
+
+
+ID_RE = re.compile('\d+')
+
+
+def lookup_area_or_404(request, format, area_id):
+    args = query_args(request, format)
+    args.update(query_args_for_area_id(request, area_id))
+    areas = get_list_or_404(Area, format, **args)
+
+    if len(areas) > 1:
+        message = 'There were multiple areas that matched %s.' % area_id
+        raise ViewException(format, message, 500)
+
+    return areas[0]
 
 
 def add_codes(areas):
@@ -49,7 +64,7 @@ def output_areas(request, title, format, areas, **kwargs):
     return output_json(iterdict((area.id, area.as_dict()) for area in areas))
 
 
-def query_args(request, format, type=None):
+def query_args(request, format, type=None, area_id=None):
     try:
         generation = int(request.GET.get('generation', 0))
     except ValueError:
@@ -81,6 +96,24 @@ def query_args(request, format, type=None):
     return args
 
 
+def query_args_for_area_id(request, area_id):
+    """ Prepare query arguments for an area id: either an int or a code_type:code string.
+    """
+    args = {}
+    if isinstance(area_id, int) or ID_RE.match(area_id):
+        # lookup by id
+        args['id'] = int(area_id)
+    elif ':' in area_id:
+        # lookup by code: code_type:code
+        # eg. MDB:WC
+        code_type, code = area_id.split(':', 1)
+        args['codes__type__code'] = code_type
+        args['codes__code'] = code
+    else:
+        raise Http404()
+    return args
+
+
 def generations(request, format='json'):
     generations = Generation.objects.all()
     if format == 'html':
@@ -95,10 +128,7 @@ def area(request, area_id, format='json'):
         if resp:
             return resp
 
-    if not re.match('\d+$', area_id):
-        raise ViewException(format, _('Bad area ID specified'), 400)
-
-    area = get_object_or_404(Area, format=format, id=area_id)
+    area = lookup_area_or_404(request, format, area_id)
 
     codes = []
     for code_type, code in sorted(area.all_codes.items()):
@@ -139,14 +169,11 @@ def area_polygon(request, srid='', area_id='', format='kml'):
         if resp:
             return resp
 
-    if not re.match('\d+$', area_id):
-        raise ViewException(format, _('Bad area ID specified'), 400)
-
     if not srid:
         srid = 4326 if format in ('kml', 'json', 'geojson') else settings.MAPIT_AREA_SRID
     srid = int(srid)
 
-    area = get_object_or_404(Area, id=area_id)
+    area = lookup_area_or_404(request, format, area_id)
 
     try:
         simplify_tolerance = float(request.GET.get('simplify_tolerance', 0))
@@ -169,14 +196,14 @@ def area_polygon(request, srid='', area_id='', format='kml'):
 
 @ratelimit(minutes=3, requests=100)
 def area_children(request, area_id, format='json'):
+    area = lookup_area_or_404(request, format, area_id)
     args = query_args(request, format)
-    area = get_object_or_404(Area, format=format, id=area_id)
     children = area.children.filter(**args)
     return output_areas(request, _('Children of %s') % area.name, format, children)
 
 
 def area_intersect(query_type, title, request, area_id, format):
-    area = get_object_or_404(Area, format=format, id=area_id)
+    area = lookup_area_or_404(request, format, area_id)
     if not area.polygons.count():
         raise ViewException(format, _('No polygons found'), 404)
 
@@ -233,9 +260,15 @@ def area_intersects(request, area_id, format='json'):
 
 @ratelimit(minutes=3, requests=100)
 def areas(request, area_ids, format='json'):
-    area_ids = area_ids.split(',')
-    areas = Area.objects.filter(id__in=area_ids)
-    return output_areas(request, _('Areas ID lookup'), format, areas)
+    args = query_args(request, format)
+    areas = []
+
+    for area_id in area_ids.split(','):
+        area_args = query_args_for_area_id(request, area_id)
+        area_args.update(args)
+        areas.extend(get_list_or_404(Area, format, **area_args))
+
+    return output_areas(request, 'Areas ID lookup', format, areas)
 
 
 @ratelimit(minutes=3, requests=100)
@@ -255,39 +288,11 @@ def areas_by_name(request, name, format='json'):
 
 @ratelimit(minutes=3, requests=100)
 def area_geometry(request, area_id):
-    area = _area_geometry(area_id)
-    if isinstance(area, HttpResponse):
-        return area
-    return output_json(area)
-
-
-def _area_geometry(area_id):
-    area = get_object_or_404(Area, id=area_id)
-    all_areas = area.polygons.all().collect()
-    if not all_areas:
-        return output_json({'error': _('No polygons found')}, code=404)
-    out = {
-        'parts': all_areas.num_geom,
-    }
-    if settings.MAPIT_AREA_SRID != 4326:
-        out['srid_en'] = settings.MAPIT_AREA_SRID
-        out['area'] = all_areas.area
-        out['min_e'], out['min_n'], out['max_e'], out['max_n'] = all_areas.extent
-        out['centre_e'], out['centre_n'] = all_areas.centroid
-        all_areas.transform(4326)
-        out['min_lon'], out['min_lat'], out['max_lon'], out['max_lat'] = all_areas.extent
-        out['centre_lon'], out['centre_lat'] = all_areas.centroid
-    else:
-        out['min_lon'], out['min_lat'], out['max_lon'], out['max_lat'] = all_areas.extent
-        out['centre_lon'], out['centre_lat'] = all_areas.centroid
-        if hasattr(countries, 'area_geometry_srid'):
-            srid = countries.area_geometry_srid
-            all_areas.transform(srid)
-            out['srid_en'] = srid
-            out['area'] = all_areas.area
-            out['min_e'], out['min_n'], out['max_e'], out['max_n'] = all_areas.extent
-            out['centre_e'], out['centre_n'] = all_areas.centroid
-    return out
+    area = lookup_area_or_404(request, 'json', area_id)
+    geom = area.geometry()
+    if not geom:
+        return output_json({'error': 'No polygons found'}, code=404)
+    return output_json(geom)
 
 
 @ratelimit(minutes=3, requests=100)
@@ -295,10 +300,8 @@ def areas_geometry(request, area_ids):
     area_ids = area_ids.split(',')
     out = {}
     for id in area_ids:
-        area = _area_geometry(id)
-        if isinstance(area, HttpResponse):
-            area = {}
-        out[id] = area
+        area = lookup_area_or_404(request, 'json', id)
+        out[id] = area.geometry() or {}
     return output_json(out)
 
 

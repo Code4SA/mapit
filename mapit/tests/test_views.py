@@ -4,12 +4,14 @@ from django.test import TestCase
 from django.conf import settings
 from django.contrib.gis.geos import Polygon, Point
 
-from mapit.models import Type, Area, Geometry, Generation, Postcode
+from mapit.models import Type, Area, Geometry, Generation, Postcode, CodeType
 from mapit.tests.utils import get_content
 
 
 class AreaViewsTest(TestCase):
     def setUp(self):
+        self.test_code_type = CodeType.objects.create(code='TST')
+
         self.generation = Generation.objects.create(
             active=True,
             description="Test generation",
@@ -31,6 +33,7 @@ class AreaViewsTest(TestCase):
             generation_low=self.generation,
             generation_high=self.generation,
             )
+        self.big_area.codes.update_or_create(type=self.test_code_type, defaults={'code': 'BIG'})
 
         polygon = Polygon(((-5, 50), (-5, 55), (1, 55), (1, 50), (-5, 50)), srid=4326)
         polygon.transform(settings.MAPIT_AREA_SRID)
@@ -43,6 +46,7 @@ class AreaViewsTest(TestCase):
             generation_low=self.generation,
             generation_high=self.generation,
             )
+        self.small_area_1.codes.update_or_create(type=self.test_code_type, defaults={'code': 'SM1'})
 
         self.small_area_2 = Area.objects.create(
             name="Small Area 2",
@@ -50,6 +54,7 @@ class AreaViewsTest(TestCase):
             generation_low=self.generation,
             generation_high=self.generation,
             )
+        self.small_area_2.codes.update_or_create(type=self.test_code_type, defaults={'code': 'SM2'})
 
         polygon = Polygon(((-4, 51), (-4, 52), (-3, 52), (-3, 51), (-4, 51)), srid=4326)
         polygon.transform(settings.MAPIT_AREA_SRID)
@@ -85,9 +90,9 @@ class AreaViewsTest(TestCase):
 
     def test_json_links(self):
         id = self.big_area.id
-        url = '/area/%d/covers.html?type=SML' % id
+        url = '/area/%d/covers.html?type=BIG' % id
         response = self.client.get(url)
-        self.assertContains(response, '/area/%d/covers?type=SML' % id)
+        self.assertContains(response, '/area/%d/covers?type=BIG' % id)
 
     def test_example_postcode(self):
         id = self.small_area_1.id
@@ -104,3 +109,17 @@ class AreaViewsTest(TestCase):
         self.assertEqual(content, {
             'code': 400, 'error': 'GetProj4StringSPI: Cannot find SRID (84) in spatial_ref_sys\n'
         })
+
+    def test_area_with_code(self):
+        url = '/area/TST:SM1'
+        response = self.client.get(url)
+        content = get_content(response)
+        self.assertEqual(content['id'], self.small_area_1.id)
+
+    def test_areas_with_code(self):
+        url = '/areas/TST:SM1,TST:SM2'
+        response = self.client.get(url)
+        content = get_content(response)
+        self.assertEqual(
+            set(content.keys()),
+            set(str(x.id) for x in [self.small_area_1, self.small_area_2]))
