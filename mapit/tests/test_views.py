@@ -87,6 +87,12 @@ class AreaViewsTest(TestCase):
         url = '/area/%d.geojson' % self.big_area.id
         response = self.client.get(url)
         content = json.loads(response.content.decode('utf-8'))
+        self.assertEqual(content['type'], 'Polygon')
+
+    def test_geojson_feature(self):
+        url = '/area/%d/feature.geojson' % self.big_area.id
+        response = self.client.get(url)
+        content = json.loads(response.content.decode('utf-8'))
         self.assertEqual(content['type'], 'Feature')
         self.assertEqual(content['properties']['name'], 'Big Area')
 

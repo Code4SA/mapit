@@ -370,19 +370,24 @@ class Area(models.Model):
             out = all_areas.json
             content_type = 'application/json'
         elif export_format == 'geojson':
-            out = json.dumps(self.as_geojson(polygons=all_areas, srid=srid))
+            out = json.dumps(self.as_geojson(polygons=all_areas))
+            content_type = 'application/json'
+        elif export_format == 'geojson-feature':
+            # historically, mapit's .geojson format returns just the geometry
+            # of an area. the geojson-feature format returns the entire area
+            # as a geojson feature
+            out = json.dumps(self.as_geojson_feature(polygons=all_areas, srid=srid))
             content_type = 'application/json'
         elif export_format == 'wkt':
             out = all_areas.wkt
             content_type = 'text/plain'
         return (out, content_type)
 
-    def as_geojson(self, polygons=None, srid=4326):
-        polygons = polygons or self.polygons.all().collect()
+    def as_geojson_feature(self, polygons=None, srid=4326):
         out = {
             'type': 'Feature',
             'properties': self.as_dict(),
-            'geometry': json.loads(polygons.geojson),
+            'geometry': self.as_geojson(polygons),
         }
 
         if srid:
@@ -392,6 +397,10 @@ class Area(models.Model):
             }
 
         return out
+
+    def as_geojson(self, polygons=None):
+        polygons = polygons or self.polygons.all().collect()
+        return json.loads(polygons.geojson)
 
     @classmethod
     def areas_as_geojson(cls, areas, srid=4326):
@@ -403,7 +412,7 @@ class Area(models.Model):
                 'type': 'name',
                 'properties': {'name': 'EPSG:%d' % srid},
             },
-            'features': [a.as_geojson() for a in areas],
+            'features': [a.as_geojson_feature() for a in areas],
         }
         return out
 
