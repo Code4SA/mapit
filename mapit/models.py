@@ -1,6 +1,5 @@
 import re
 import itertools
-import json
 
 from django.contrib.gis.db import models
 from django.conf import settings
@@ -348,48 +347,18 @@ class Area(models.Model):
         all_polygons = self.polygons.all()
         if len(all_polygons) == 0:
             return (None, None)
-        areas = [self]
-        serialiser = GeometrySerialiser(areas, srid, simplify_tolerance)
+        serialiser = GeometrySerialiser(self, srid, simplify_tolerance)
         if export_format == 'kml':
             out, content_type = serialiser.kml(kml_type, line_colour, fill_colour)
         elif export_format in ('json', 'geojson'):
             out, content_type = serialiser.geojson()
+        elif export_format == 'geojson-feature':
+            # the mapit .geojson type returns just geometry, this
+            # returns the area is a Feature
+            out, content_type = serialiser.geojson_feature()
         elif export_format == 'wkt':
             out, content_type = serialiser.wkt()
         return (out, content_type)
-
-    def as_geojson_feature(self, polygons=None, srid=4326):
-        out = {
-            'type': 'Feature',
-            'properties': self.as_dict(),
-            'geometry': self.as_geojson(polygons),
-        }
-
-        if srid:
-            out['crs'] = {
-                'type': 'name',
-                'properties': {'name': 'EPSG:%d' % srid},
-            }
-
-        return out
-
-    def as_geojson(self, polygons=None):
-        polygons = polygons or self.polygons.all().collect()
-        return json.loads(polygons.geojson)
-
-    @classmethod
-    def areas_as_geojson(cls, areas, srid=4326):
-        """ Return a geojson FeatureCollection dict for these areas.
-        """
-        out = {
-            'type': 'FeatureCollection',
-            'crs': {
-                'type': 'name',
-                'properties': {'name': 'EPSG:%d' % srid},
-            },
-            'features': [a.as_geojson_feature() for a in areas],
-        }
-        return out
 
 
 @python_2_unicode_compatible
