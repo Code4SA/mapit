@@ -61,6 +61,11 @@ def output_areas(request, title, format, areas, **kwargs):
     areas = add_codes(areas)
     if format == 'html':
         return output_html(request, title, areas, **kwargs)
+
+    if format == 'geojson':
+        geojson = Area.areas_as_geojson(areas)
+        return output_json(geojson)
+
     return output_json(iterdict((area.id, area.as_dict()) for area in areas))
 
 
@@ -269,6 +274,13 @@ def areas(request, area_ids, format='json'):
         areas.extend(get_list_or_404(Area, format, **area_args))
 
     return output_areas(request, 'Areas ID lookup', format, areas)
+
+
+@ratelimit(minutes=3, requests=100)
+def areas_polygons(request, area_ids, format):
+    area_ids = area_ids.split(',')
+    areas = Area.objects.filter(id__in=area_ids)
+    return output_areas(request, 'Area polygons by ID lookup', format, areas)
 
 
 @ratelimit(minutes=3, requests=100)
