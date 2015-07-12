@@ -16,12 +16,13 @@ from django.core.urlresolvers import resolve, reverse
 from django.conf import settings
 from django.shortcuts import redirect, render
 
-from mapit.models import Area, Generation, Geometry, Code, Name, TransformError
+from mapit.models import Area, Generation, Geometry, Code, Name
 from mapit.shortcuts import output_json, output_html, get_list_or_404, set_timeout
 from mapit.middleware import ViewException
 from mapit.ratelimitcache import ratelimit
 from mapit import countries
 from mapit.iterables import iterdict
+from mapit.geometryserialiser import GeometrySerialiser, TransformError
 
 
 ID_RE = re.compile('\d+')
@@ -281,17 +282,44 @@ def areas(request, area_ids, format='json'):
 
 
 @ratelimit(minutes=3, requests=100)
-def areas_polygons(request, area_ids, format):
-    areas = lookup_areas_or_404(request, format, area_ids)
-    return output_areas(request, 'Area polygons by ID lookup', format, areas)
-
-
-@ratelimit(minutes=3, requests=100)
 def areas_by_name(request, name, format='json'):
     args = query_args(request, format)
     args['name__istartswith'] = name
     areas = Area.objects.filter(**args)
     return output_areas(request, _('Areas starting with %s') % name, format, areas)
+
+
+@ratelimit(minutes=3, requests=100)
+def areas_polygon(request, area_ids, srid='', format='kml'):
+    if not srid:
+        srid = 4326 if format in ('kml', 'json', 'geojson') else settings.MAPIT_AREA_SRID
+    srid = int(srid)
+
+    try:
+        simplify_tolerance = float(request.GET.get('simplify_tolerance', 0))
+    except ValueError:
+        raise ViewException(format, _('Badly specified tolerance'), 400)
+
+    areas = lookup_areas_or_404(request, format, area_ids)
+
+    output = ''
+    serialiser = GeometrySerialiser(areas, srid, simplify_tolerance)
+    if format == 'kml':
+        try:
+            output, content_type = serialiser.kml('full')
+        except TransformError as e:
+            return output_json({'error': e.args[0]}, code=400)
+    elif format == 'geojson':
+        try:
+            output, content_type = serialiser.geojson()
+        except TransformError as e:
+            return output_json({'error': e.args[0]}, code=400)
+
+    response = HttpResponse(content_type='%s; charset=utf-8' % content_type)
+    response['Access-Control-Allow-Origin'] = '*'
+    response['Cache-Control'] = 'max-age=2419200'  # 4 weeks
+    response.write(output)
+    return response
 
 
 @ratelimit(minutes=3, requests=100)
