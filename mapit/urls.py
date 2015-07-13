@@ -7,7 +7,7 @@ from mapit.views import areas, postcodes
 handler500 = 'mapit.shortcuts.json_500'
 
 format_end = '(?:\.(?P<format>html|json))?'
-area_id = '(?P<area_id>[0-9A-Za-z:]+)'
+area_id = '(?P<area_id>[^/.]+)'
 
 urlpatterns = [
     url(r'^$', render, {'template_name': 'mapit/index.html'}, 'mapit_index'),
@@ -46,11 +46,11 @@ urlpatterns = [
 
     url(r'^nearest/(?P<srid>[0-9]+)/(?P<x>[0-9.-]+),(?P<y>[0-9.-]+)%s$' % format_end, postcodes.nearest),
 
-    url(r'^areas/(?P<area_ids>[0-9A-Za-z:]+(?:,[0-9A-Za-z:]+)*)%s$' % format_end, areas.areas),
-    url(r'^areas/(?P<area_ids>[0-9A-Za-z:]+(?:,[0-9A-Za-z:]+)*)\.(?P<format>kml|geojson)$', areas.areas_polygon),
-    url(r'^areas/(?P<srid>[0-9]+)/(?P<area_ids>[0-9A-Za-z:]+(?:,[0-9A-Za-z:]+)*)\.(?P<format>kml|geojson)$',
+    url(r'^areas/(?P<area_ids>[^/.]+)%s$' % format_end, areas.areas),
+    url(r'^areas/(?P<area_ids>[^/.]+)\.(?P<format>kml|geojson)$', areas.areas_polygon),
+    url(r'^areas/(?P<srid>[0-9]+)/(?P<area_ids>[^/.]+)\.(?P<format>kml|geojson)$',
         areas.areas_polygon),
-    url(r'^areas/(?P<area_ids>[0-9A-Za-z:]+(?:,[0-9A-Za-z:]+)*)/geometry$', areas.areas_geometry),
+    url(r'^areas/(?P<area_ids>[^/.]+)/geometry$', areas.areas_geometry),
     url(r'^areas/(?P<name>.+?)%s$' % format_end, areas.areas_by_name),
     url(r'^areas$', areas.deal_with_POST, {'call': 'areas'}),
     url(r'^code/(?P<code_type>[^/]+)/(?P<code_value>[^/]+?)%s$' % format_end, areas.area_from_code),
