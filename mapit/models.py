@@ -437,11 +437,11 @@ class CodeType(models.Model):
 class Code(models.Model):
     area = models.ForeignKey(Area, related_name='codes')
     type = models.ForeignKey(CodeType, related_name='codes')
-    code = models.CharField(max_length=500)
+    code = models.CharField(max_length=500, db_index=True)
     objects = Manager()
 
     class Meta:
-        unique_together = ('area', 'type')
+        unique_together = ('area', 'type', 'code')
 
     def __str__(self):
         return '%s (%s) [%s]' % (self.code, self.type.code, self.area.id)
