@@ -39,15 +39,15 @@ def lookup_area_or_404(request, format, area_id):
 
 
 def lookup_areas_or_404(request, format, area_id_string):
-    areas = []
+    areas = set()
     args = query_args(request, format)
 
     for area_id in area_id_string.split(','):
         area_args = query_args_for_area_id(request, area_id)
         area_args.update(args)
-        areas.extend(get_list_or_404(Area, format, **area_args))
+        areas.update(get_list_or_404(Area, format, **area_args))
 
-    return areas
+    return list(areas)
 
 
 def add_codes(areas):
