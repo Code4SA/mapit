@@ -75,7 +75,7 @@ class GeometrySerialiser:
     def __simplify(self, polygons, name):
         num_points_before_simplification = polygons.num_points
         if self.simplify_tolerance:
-            polygons = polygons.simplify(self.simplify_tolerance)
+            polygons = polygons.simplify(self.simplify_tolerance, True)
             if polygons.num_points == 0 and num_points_before_simplification > 0:
                 raise TransformError("Simplifying %s with tolerance %f left no boundary at all" % (
                     name, self.simplify_tolerance))
