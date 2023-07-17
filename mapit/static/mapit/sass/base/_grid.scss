@@ -23,9 +23,5 @@ body {
 }
 
 @mixin full_grid($initial_padding_left:0, $initial_padding_right:0) {
-    @media (min-width: 63.75em) {
-        padding-left: $initial_padding_left;
-        padding-right: $initial_padding_right;
-    }
     background-color: #fff;
 }
