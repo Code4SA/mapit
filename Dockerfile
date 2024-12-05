@@ -47,6 +47,7 @@ RUN adduser \
 # Leverage a cache mount to /root/.cache/pip to speed up subsequent builds.
 # Leverage a bind mount to requirements.txt to avoid having to copy them into
 # into this layer.
+COPY . .
 RUN pip install --upgrade pip
 RUN python -m pip install -r requirements.txt
 
@@ -54,7 +55,6 @@ RUN python -m pip install -r requirements.txt
 USER appuser
 
 # Copy the source code into the container.
-COPY . .
 
 # Expose the port that the application listens on.
 EXPOSE 8000
