@@ -1,0 +1,7 @@
+Django==1.11.29
+#South==1.0.2
+GDAL==2.4.4
+psycopg2
+PyYAML
+Shapely
+future

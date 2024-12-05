@@ -453,8 +453,8 @@ class PostcodeManager(six.with_metaclass(GetQuerySetMetaclass, GeoManager)):
     def get_queryset(self):
         return self.model.QuerySet(self.model)
 
-    def __getattr__(self, attr, *args):
-        return getattr(self.get_queryset(), attr, *args)
+    #def __getattr__(self, attr, *args):
+    #    return getattr(self.get_queryset(), attr, *args)
 
 
 @python_2_unicode_compatible

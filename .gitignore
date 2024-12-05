@@ -21,3 +21,5 @@
 .venv
 
 .DS_Store
+
+collected_static

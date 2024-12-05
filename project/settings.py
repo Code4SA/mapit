@@ -18,7 +18,7 @@ try:
     with open(os.path.join(BASE_DIR, 'conf', 'general.yml'), 'r') as fp:
         config = yaml.load(fp)
 except:
-    config = {}
+    config = os.environ
 
 # An EPSG code for what the areas are stored as, e.g. 27700 is OSGB, 4326 for
 # WGS84. Optional, defaults to 4326.
@@ -38,7 +38,6 @@ GOOGLE_ANALYTICS = config.get('GOOGLE_ANALYTICS', '')
 # Django settings for mapit project.
 
 DEBUG = config.get('DEBUG', True)
-TEMPLATE_DEBUG = DEBUG
 
 # (Note that even if DEBUG is true, output_json still sets a
 # Cache-Control header with max-age of 28 days.)
@@ -144,7 +143,9 @@ MEDIA_URL = ''
 # Don't put anything in this directory yourself; store your static files
 # in apps' "static/" subdirectories and in STATICFILES_DIRS.
 # Example: "/var/www/example.com/static/"
-STATIC_ROOT = os.path.join(PARENT_DIR, 'collected_static')
+#STATIC_ROOT = os.path.join(PARENT_DIR, 'collected_static')
+STATIC_ROOT = os.path.join(BASE_DIR, 'collected_static')
+
 
 # URL prefix for static files.
 # Example: "http://example.com/static/", "http://static.example.com/"
@@ -166,12 +167,12 @@ STATICFILES_FINDERS = (
 )
 
 # List of callables that know how to import templates from various sources.
-TEMPLATE_LOADERS = (
-    ('django.template.loaders.cached.Loader', (
-        'django.template.loaders.filesystem.Loader',
-        'django.template.loaders.app_directories.Loader',
-    )),
-)
+# TEMPLATE_LOADERS = (
+#     ('django.template.loaders.cached.Loader', (
+#         'django.template.loaders.filesystem.Loader',
+#         'django.template.loaders.app_directories.Loader',
+#     )),
+# )
 
 # UpdateCacheMiddleware does ETag setting, and
 # ConditionalGetMiddleware does ETag checking.
@@ -200,30 +201,41 @@ ROOT_URLCONF = 'project.urls'
 # Python dotted path to the WSGI application used by Django's runserver.
 WSGI_APPLICATION = 'project.wsgi.application'
 
-TEMPLATE_DIRS = (
-    # Put strings here, like "/home/html/django_templates" or "C:/www/django/templates".
-    # Always use forward slashes, even on Windows.
-    # Don't forget to use absolute paths, not relative paths.
-)
+# TEMPLATE_DIRS = (
+#     # Put strings here, like "/home/html/django_templates" or "C:/www/django/templates".
+#     # Always use forward slashes, even on Windows.
+#     # Don't forget to use absolute paths, not relative paths.
+# )
 
-TEMPLATE_CONTEXT_PROCESSORS = (
-    'django.core.context_processors.request',
-    'django.contrib.auth.context_processors.auth',
-    'django.contrib.messages.context_processors.messages',
-    'mapit.context_processors.country',
-    'mapit.context_processors.analytics',
-)
 
-if django.get_version() >= '1.8':
-    processors = map(lambda x: x.replace('django.core', 'django.template'), TEMPLATE_CONTEXT_PROCESSORS)
-    TEMPLATES = [{
-        'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': TEMPLATE_DIRS,
-        'OPTIONS': {
-            'context_processors': processors,
-            'loaders': TEMPLATE_LOADERS,
-        },
-    }]
+# TEMPLATE_CONTEXT_PROCESSORS = (
+#     'django.core.context_processors.request',
+#     'django.contrib.auth.context_processors.auth',
+#     'django.contrib.messages.context_processors.messages',
+#     'mapit.context_processors.country',
+#     'mapit.context_processors.analytics',
+# )
+
+print(django.get_version())
+
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+TEMPLATES = [{
+    'BACKEND': 'django.template.backends.django.DjangoTemplates',
+    'DIRS': [
+        os.path.join(BASE_DIR, 'templates'),  # Custom template directory
+    ],
+    'APP_DIRS': True,  # Enable loading from app-specific "templates/" directories
+    'OPTIONS': {
+        'context_processors': [
+            'django.template.context_processors.debug',
+            'django.template.context_processors.request',
+            'django.contrib.auth.context_processors.auth',
+            'django.contrib.messages.context_processors.messages',
+        ],
+
+    },
+    #"TEMPLATE_DEBUG": DEBUG
+}]
 
 INSTALLED_APPS = [
     'django.contrib.auth',
@@ -235,8 +247,8 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'mapit',
 ]
-if django.get_version() < '1.7':
-    INSTALLED_APPS.append('south')
+#if django.get_version() < '1.7':
+    #INSTALLED_APPS.append('south')
 
 if MAPIT_COUNTRY:
     try:

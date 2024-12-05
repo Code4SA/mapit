@@ -1,0 +1,35 @@
+services:
+  server:
+    build:
+      context: .
+    depends_on:
+      - db
+    ports:
+      - 8000:8000
+    environment:
+      - DJANGO_DEBUG=TRUE
+      - DJANGO_SECRET_KEY=not-secret-in-dev
+      - DATABASE_URL=postgres://mapit:mapit@db:5432/mapit
+      - MAPIT_DB_NAME=mapit
+      - MAPIT_DB_USER=mapit
+      - MAPIT_DB_PASS=mapit
+      - MAPIT_DB_HOST=db
+      - MAPIT_DB_PORT=5432
+    volumes:
+      - .:/app
+    command: bin/wait-for-deps.sh python manage.py runserver 0.0.0.0:8000
+    
+  
+  db:
+    image: postgis/postgis:12-3.4
+    environment:
+      - POSTGRES_USER=mapit
+      - POSTGRES_PASSWORD=mapit
+      - POSTGRES_DB=mapit
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    ports:
+      - 5321:5432
+
+volumes:
+  db-data:
