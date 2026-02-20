@@ -2,6 +2,7 @@ import re
 import itertools
 
 from django.contrib.gis.db import models
+from django.contrib.gis.db.models import Collect
 from django.conf import settings
 from django.db import connection
 from django.db.models.query import RawQuerySet
@@ -286,7 +287,7 @@ class Area(models.Model):
         """ Get a dict describing the geometry of this area, or None if
         this area has no polygons.
         """
-        all_areas = self.polygons.all().collect()
+        all_areas = self.polygons.all().aggregate(collected=Collect('polygon'))['collected']
         if not all_areas:
             return None
 
