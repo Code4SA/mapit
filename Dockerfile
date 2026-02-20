@@ -55,6 +55,9 @@ RUN mkdir -p /app/collected_static && chown -R appuser:appuser /app/collected_st
 RUN pip install --upgrade pip
 RUN python -m pip install -r requirements.txt
 
+# Compile SASS to CSS
+RUN python bin/mapit_make_css
+
 # Switch to the non-privileged user to run the application.
 USER appuser
 
