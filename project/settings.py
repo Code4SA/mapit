@@ -183,6 +183,7 @@ USE_ETAGS = False
 MIDDLEWARE_CLASSES = [
     'mapit.middleware.gzip.GZipMiddleware',
     # Not 'django.middleware.gzip.GZipMiddleware' to work around Django #24242
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.middleware.http.ConditionalGetMiddleware',
     'django.middleware.cache.UpdateCacheMiddleware',
     'django.middleware.common.CommonMiddleware',

@@ -55,6 +55,8 @@ RUN mkdir -p /app/collected_static && chown -R appuser:appuser /app/collected_st
 RUN pip install --upgrade pip
 RUN python -m pip install -r requirements.txt
 
+RUN python manage.py collectstatic --noinput
+
 # Switch to the non-privileged user to run the application.
 USER appuser
 
@@ -64,5 +66,5 @@ USER appuser
 EXPOSE 8000
 
 # Run the application.
-CMD python manage.py runserver 0.0.0.0:8000
+CMD gunicorn project.wsgi:application --bind 0.0.0.0:8000
 
