@@ -55,16 +55,12 @@ RUN mkdir -p /app/collected_static && chown -R appuser:appuser /app/collected_st
 RUN pip install --upgrade pip
 RUN python -m pip install -r requirements.txt
 
-RUN python manage.py collectstatic --noinput
-
 # Switch to the non-privileged user to run the application.
 USER appuser
-
-# Copy the source code into the container.
 
 # Expose the port that the application listens on.
 EXPOSE 8000
 
-# Run the application.
-CMD gunicorn project.wsgi:application --bind 0.0.0.0:8000
+# Collect static files at startup (needs DJANGO_SECRET_KEY from env) then start gunicorn.
+CMD python manage.py collectstatic --noinput && gunicorn project.wsgi:application --bind 0.0.0.0:8000
 
