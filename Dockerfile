@@ -51,7 +51,7 @@ RUN adduser \
 COPY . .
 
 RUN chown -R appuser:appuser /app/mapit
-RUN chown -R appuser:appuser /app/collected_static
+RUN mkdir -p /app/collected_static && chown -R appuser:appuser /app/collected_static
 RUN pip install --upgrade pip
 RUN python -m pip install -r requirements.txt
 
