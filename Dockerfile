@@ -49,6 +49,9 @@ RUN adduser \
 # Leverage a bind mount to requirements.txt to avoid having to copy them into
 # into this layer.
 COPY . .
+
+RUN chown -R appuser:appuser /app/mapit
+RUN chown -R appuser:appuser /app/collected_static
 RUN pip install --upgrade pip
 RUN python -m pip install -r requirements.txt
 

@@ -22,4 +22,4 @@
 
 .DS_Store
 
-collected_static
+!/collected_static/.gitkeep
